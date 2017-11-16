@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>経路</title>
+
+    <script type="text/javascript" src="https://maps.google.com/maps/api/js?v=3&key=&libraries=geometry"></script>
+    <script type="text/javascript">
+
+        var map;
+        google.maps.event.addDomListener(window, 'load', initialize);
+
+        // 初期化
+        function initialize() {
+            //地図の中心
+            setMap(35, 139, 18);
+        }
+
+        // 地図インスタンス作成
+        function setMap(lat, lng, zoom) {
+            var center = new google.maps.LatLng(lat, lng);
+            var stylez = [
+                {
+                    featureType: "all",
+                    elementType: "all",
+                    stylers: [{ visibility: "on" }]
+                }
+            ];
+            myOptions = {
+                zoom: zoom,
+                center: center,
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                styles: stylez
+            };
+            map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+        }
+
+        var fileobj;
+        var lines;
+        var courses;
+        var timer;
+        var RowCount = 0;
+        var Pointsforline = [];
+        var PrvLat = 0.0;
+        var PrvLng = 0.0;
+        document.addEventListener('DOMContentLoaded', function(){
+            var fileobj = document.getElementById('file');
+            fileobj.addEventListener('change', function(evt){
+                var files = evt.target.files;
+                var reader = new FileReader();
+                reader.readAsText(files[0], 'shift-jis');
+                reader.onload = function(ev){
+                    Pointsforline = [];
+                    lines = reader.result.split('\r');
+                    timer = setInterval(LoadAddress, 500);
+
+                    LoadCourse();
+                }
+            });
+
+            var courseObj = document.getElementById('filecourse');
+            courseObj.addEventListener('change', function(evt){
+                var files = evt.target.files;
+                var reader = new FileReader();
+                reader.readAsText(files[0], 'shift-jis');
+                reader.onload = function(ev){
+                    courses = reader.result.split('\r');
+                }
+            });
+        });
+
+        function LoadCourse() {
+            courses.forEach(function(value){
+                var course = value.split(',');
+
+                var latlng = new google.maps.LatLng(parseFloat(course[1]), parseFloat(course[2]));
+                var marker = new google.maps.Marker({
+                    position: latlng,
+                    map: map,
+                    label: String(course[0])
+                });
+
+                var circle = new google.maps.Circle({
+                    center: latlng,
+                    map: map,
+                    radius: parseInt(course[3]),
+                    fillColor: "#FFFFFF",
+                    fillOpacity: 0.1,
+                    strokeColor:"#000000",
+                    strokeOpacity: 1.0,
+                    strokeWeight: 0.5
+                });
+            });
+        }
+
+        function LoadAddress() {
+            if (lines.length == RowCount - 1) {
+                clearTimeout(timer);
+            }
+
+            var latlngBounds = map.getBounds();
+            var swLanLng = latlngBounds.getSouthWest();
+            var swLat = swLanLng.lat();
+            var swLng = swLanLng.lng();
+
+            var neLanLng = latlngBounds.getNorthEast();
+            var neLat = neLanLng.lat();
+            var neLng = neLanLng.lng();
+
+            var point = lines[RowCount].split(',');
+            var latlng = new google.maps.LatLng(parseFloat(point[1]), parseFloat(point[2]));
+            RowCount++;
+
+            //動いてなければ処理しない。
+            if (Math.abs(latlng.lat() - PrvLat) < 0.0003 && Math.abs(latlng.lng() - PrvLng) < 0.0003) {
+                return;
+            }
+
+            Pointsforline.push(latlng);
+
+            if ((swLat > latlng.lat() || neLat < latlng.lat()) || (swLng > latlng.lng() || neLng < latlng.lng())) {
+                map.panTo(latlng);
+            }
+
+            var marker = new google.maps.Marker({
+                position: latlng,
+                map: map,
+                label: String(point[0]),
+                icon:{
+                    fillColor:"#FFFF00",
+                    fillOpacity:0.8,
+                    path:google.maps.SymbolPath.CIRCLE,
+                    scale:8,
+                    strokeColor:"#FF0000",
+                    strokeWeight:1.0
+                },
+                zIndex: RowCount + 1
+            });
+
+            var polyline = new google.maps.Polyline({
+                path: Pointsforline,
+                gedestic: true,
+                strokeColor: '#0000F9',
+                strokeOpacity:1.0,
+                strokeWeight: 2
+            });
+            polyline.setMap(map);
+
+            PrvLat = latlng.lat();
+            PrvLng = latlng.lng();
+        }
+    </script>
+</head>
+    コース:<input type="file" name="filecourse" id="filecourse" />
+    &nbsp;&nbsp;動態:<input type="file" name="file" id="file" />
+    <div id="map_canvas" style="width:100%; height:800px"></div>
+    <br />
+</html>

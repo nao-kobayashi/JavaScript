@@ -1,7 +1,21 @@
+/*
+    呼び出し側でgoogle APIとjQueryをインポートする必要がある。
+*/
+/*
+    定数定義
+*/
 const KS_GEO_STATUS_OK = 1;
 const KS_GEO_STATUS_NG_GOOGLE = 2;
 const KS_GEO_STATUS_NG_KS = 3;
 
+/*
+    緯度・経度 取得後の結果として戻すクラス
+    プロパティ
+    location : 緯度、経度がセットされる。
+    status : 実行結果、本ファイルのconstで定義
+    error : エラー文字列（googleが返すエラー文字列）
+    dataType : KS_CACHE or google or error データの取得元
+*/
 var GeocodeResult = function(location, status, error, dataType){
     //呼び出し元でnew演算子付け忘れ
     if (!(this instanceof GeocodeResult)) {
@@ -17,7 +31,7 @@ var GeocodeResult = function(location, status, error, dataType){
 }
 
 
-//デバッグ用メソッド定義
+//デバッグ用メソッド定義 *******************************
 GeocodeResult.prototype.setRawData = function(raw) {
     this.rawData = raw;
 }
@@ -25,13 +39,22 @@ GeocodeResult.prototype.setRawData = function(raw) {
 GeocodeResult.prototype.getRawData = function() {
     return this.rawData;
 }
+//デバッグ用メソッド定義 *******************************
 
-//住所から緯度・経度を求める。
+
+/*
+    住所から緯度・経度を求める。
+    address:ジオコーディングする住所
+    callback:データ取得後、呼び出すコールバック関数。引数はGeocodeResult
+*/
 function getLocation(address, callback) {    
     //キャッシュサーバーに問い合わせ
     KsGeocoder(address, callback);
 }
 
+/*
+    キャッシュサーバーに問い合わせる
+*/
 function KsGeocoder(address, callback) {
     var param = { addr: address };
 
@@ -61,7 +84,9 @@ function KsGeocoder(address, callback) {
     });
 }
 
-
+/*
+    Google Geocode APIを呼び出す。
+*/
 function GoogleGeocoder(address, callback) {
     geocoder = new google.maps.Geocoder();
     geocoder.geocode({ 'address': address }, function (results, status) {
@@ -77,12 +102,17 @@ function GoogleGeocoder(address, callback) {
         //呼び出し元コールバック呼び出し
         callback(result);
 
-        //googleから読んだ場合はその値をキャッシュに保存しておく
-        saveGeocode(address, results);
+        if (status == google.maps.GeocoderStatus.OK) {
+            //googleから読んだ場合はその値をキャッシュに保存しておく
+            SaveGeocode(address, results);
+        }
     });
 }
 
-function saveGeocode(address, geocodeJson) {
+/*
+    googleでジオコーディングした結果をキャッシュサーバーに保存する。
+*/
+function SaveGeocode(address, geocodeJson) {
     var cnvGeocode = JSON.stringify(geocodeJson);
     var param = { addr: address, json: cnvGeocode };
     
@@ -102,8 +132,9 @@ function saveGeocode(address, geocodeJson) {
     });
 }
 
-
-
+/*
+    戻り値のjsonからlocationを取得する。
+*/
 function ParseLocation(results) {
     var latlng;
     for (var i = 0; i < results.length; i++) {
